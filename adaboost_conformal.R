@@ -1,4 +1,4 @@
-#conformal inference for AdaBoost classification
+#conformal inference classification tutorial using CogPilot data
 
 #load necessary R packages
 #make sure you install these packages as well
@@ -59,10 +59,10 @@ all_reps_coverage <- c()
 #takes around 3 mins to run this once on my machine
 B <- 1
 for(b in 1:B){
-  #select five for test set
+  #select five observations for test set
   train_id <- sample(1:n, 161)
   
-  #select 20 for test set
+  #select 20 observations for test set
   #train_id <- sample(1:n, 146)
   
   #generate train and test sets
@@ -138,6 +138,10 @@ for(b in 1:B){
   all_reps_coverage <- rbind(all_reps_coverage, data.frame(rep = b, method = "conf", coverage = coverage, alpha = 1-alpha_vec))
   all_reps_coverage <- rbind(all_reps_coverage, data.frame(rep = b, method = "ada", coverage = soft_coverage, alpha = 1-alpha_vec))
 }
+
+
+#save coverage results for all reps
+saveRDS(all_reps_coverage, "all_reps_coverage.RDS")
 #####TRAIN#####
 
 #####VISUALIZATION#####
@@ -191,10 +195,8 @@ plot(x = 1 - alpha_vec, y = one_rep$coverage, type = "l", xlab = expression(1-al
 lines(x = 1 - alpha_vec, y = one_rep_ada$coverage, lwd = 2, col = 2, lty = 2)
 abline(a = 0, b = 1, lty = 3)
 
-saveRDS(all_reps_coverage, "all_reps_coverage.RDS")
-
 #pull from completed simulation
-all_reps_coverage <- readRDS("all_reps_coverge.RDS")
+all_reps_coverage <- readRDS("all_reps_coverage.RDS")
 
 all_reps_coverage %>% ggplot(aes(x = alpha, y = coverage, group = alpha)) + 
   geom_boxplot(aes(fill = method)) +
