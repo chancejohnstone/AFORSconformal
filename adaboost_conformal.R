@@ -30,7 +30,8 @@ str(perf)
 #align responses with covariate data
 sub <- parse_number(substr(data_all$Subject.Run,start = 7, stop = 9))
 run <- parse_number(substr(data_all$Subject.Run,start = 15, stop = 17))
-keep <- data.frame(Subject = sub, Run = run, keep = 1)
+#keep <- data.frame(Subject = sub, Run = run, keep = 1)
+keep <- data.frame(Subject = sub, Run = run)
 
 #drop regression responses
 #keep only covariates aligned with observations for which we have difficulty  responses
@@ -40,6 +41,7 @@ keep_check <- left_join(keep, perf[,-c(2,5,6,7,8)], by = c("Subject", "Run"))
 xtrain <- read.csv("xtrain.csv")
 sub <- names(xtrain)
 sub_keep <- sub[(sub %in% names(data_all))]
+sub_keep
 
 #keep selected features
 data_sub <- data_all %>% select(sub_keep)
@@ -140,8 +142,9 @@ for(b in 1:B){
 }
 
 
-#save coverage results for all reps
-saveRDS(all_reps_coverage, "all_reps_coverage.RDS")
+#save coverage results for all simulation reps
+#saveRDS(all_reps_coverage, "all_reps_coverage.RDS")
+#write.csv(all_reps_coverage, "all_reps_coverage.csv")
 #####TRAIN#####
 
 #####VISUALIZATION#####
