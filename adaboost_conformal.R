@@ -16,6 +16,8 @@ library(adabag)
 library(dplyr)
 library(reshape2)
 
+rotate <- function(x) t(apply(x, 2, rev))
+
 #####DATA#####
 #read in all covariate data
 data_all <- read.csv("score_val_allModalities.csv")
@@ -79,6 +81,7 @@ for(b in 1:B){
   
   #fit adaboost model on all kept features
   ada <- boosting(resp~., data = train, mfinal = 35)
+  class <- apply(ada$prob, FUN = which.max, MARGIN = 1)
   
   pival <- matrix(0, nrow = length(ytest), ncol = 4)
   for(i in 1:length(ytest)){
@@ -143,8 +146,8 @@ for(b in 1:B){
 
 
 #save coverage results for all simulation reps
-#saveRDS(all_reps_coverage, "all_reps_coverage.RDS")
-#write.csv(all_reps_coverage, "all_reps_coverage.csv")
+#saveRDS(all_reps_coverage, "all_reps_coverage_small.RDS")
+#write.csv(all_reps_coverage, "all_reps_coverage_small.csv")
 #####TRAIN#####
 
 #####VISUALIZATION#####
@@ -163,10 +166,22 @@ set_tf <- pival >= alpha
 set <- data.frame(which(pival >= alpha, arr.ind = TRUE))
 set <- set %>% arrange(row)
 
-#choose all classes with output probability >= alpha
-prob_set_tf <- ada_pred$prob >= alpha
-prob_set <- data.frame(which(ada_pred$prob >= alpha, arr.ind = TRUE))
-prob_set <- prob_set %>% arrange(row)
+#choose classes to exceed 1-alpha
+ada_hold <- ada_pred$prob
+ranks <- apply(ada_hold, FUN = rank, MARGIN = 1)
+save_sort <- apply(ada_hold, FUN = sort, MARGIN = 1, decreasing = FALSE)
+ranks <- rotate(ranks)
+save_sort <- rotate(save_sort)
+cum_sum <- apply(save_sort, FUN = cumsum, MARGIN = 1)
+pick <- apply(cum_sum < 1 - alpha, FUN = sum, MARGIN = 2) + 1
+pick_keep <- c()
+for(k in 1:nrow(test)){
+  pick_keep <- rbind(pick_keep, cbind(k,which(ranks[k,] <= pick[k])))
+}
+
+#pick_keep <- data.frame(pick_keep)
+prob_set_tf <- matrix(FALSE, nrow = nrow(test), ncol = 4)
+prob_set_tf[pick_keep] <- TRUE
 
 #construct labels for plots
 method_labs <- c("AdaBoost", "Conformal")
@@ -199,7 +214,8 @@ lines(x = 1 - alpha_vec, y = one_rep_ada$coverage, lwd = 2, col = 2, lty = 2)
 abline(a = 0, b = 1, lty = 3)
 
 #pull from completed simulation
-all_reps_coverage <- readRDS("all_reps_coverage.RDS")
+#all_reps_coverage <- readRDS("all_reps_coverage.RDS")
+all_reps_coverage <- readRDS("all_reps_coverage_small.RDS")
 
 all_reps_coverage %>% ggplot(aes(x = alpha, y = coverage, group = alpha)) + 
   geom_boxplot(aes(fill = method)) +
