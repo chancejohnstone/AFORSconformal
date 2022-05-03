@@ -10,6 +10,7 @@ import math
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import seaborn as sns
+from scipy.stats import rankdata
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.utils import resample
@@ -168,8 +169,18 @@ for b in range(B):
         #variables cannot be named "set" in Python 
         conf_set = pd.DataFrame(np.argwhere(pival > alpha)+1, columns=['Row', 'Difficulty'])
         
-        #choose all classes with output >= alpha
-        prob_set_tf = ada_pred > alpha
+        #choose the smallest set of classes such that their sum probability > (1-alpha)
+        #sort elements by row in descending order
+        ada_sorted = np.sort(ada_pred, axis=1)[:,::-1]
+        #returns rank of each element by row, with the --largest-- rank being the maximum
+        ada_ranks = rankdata(ada_pred, axis=1)
+        cum_sum = np.cumsum(ada_sorted, axis=1) 
+        #find the number of classes it takes to reach 1-alpha probability
+        pick = np.sum(cum_sum < (1 - alpha), axis=1) + 1
+        pick_keep = np.zeros(ada_pred.shape)
+        for row in range(len(ada_ranks)):
+            pick_keep[row,:] = ada_ranks[row,:] > (4-pick[row])
+        prob_set_tf = pick_keep
         prob_set = pd.DataFrame(np.argwhere(ada_pred > alpha)+1, columns=['Row', 'Difficulty'])
         
         total_prob = ada_pred * conf_set_tf
@@ -242,12 +253,27 @@ conf_set = pd.DataFrame(np.argwhere(pival > alpha)+1, columns=['Row', 'Difficult
 # In[16]:
 
 
-#choose all classes with output >= alpha
-prob_set_tf = ada_pred > alpha
-prob_set = pd.DataFrame(np.argwhere(ada_pred > alpha)+1, columns=['Row', 'Difficulty'])
+#sort elements by row in descending order
+ada_sorted = np.sort(ada_pred, axis=1)[:,::-1]
+#returns rank of each element by row, with the --largest-- rank being the maximum
+ada_ranks = rankdata(ada_pred, axis=1)
+cum_sum = np.cumsum(ada_sorted, axis=1) 
+#find the number of classes it takes to reach 1-alpha probability
+pick = np.sum(cum_sum < (1 - alpha), axis=1) + 1
+pick_keep = np.zeros(ada_pred.shape)
+for row in range(len(ada_ranks)):
+    pick_keep[row,:] = ada_ranks[row,:] > (4-pick[row])
 
 
 # In[17]:
+
+
+#choose all classes with output >= alpha
+prob_set_tf = pick_keep
+prob_set = pd.DataFrame(np.argwhere(prob_set_tf == 1)+1, columns=['Row', 'Difficulty'])
+
+
+# In[18]:
 
 
 #visualizing prediction sets... note that this plot will be different than the plot in the R script
@@ -272,14 +298,14 @@ plt.legend(handles=legend_handles, ncol=1, fontsize=15,
 plt.show()
 
 
-# In[18]:
+# In[19]:
 
 
 #pull from simulation completed in R
 all_reps_coverage = pd.read_csv('all_reps_coverage.csv')
 
 
-# In[19]:
+# In[20]:
 
 
 df = all_reps_coverage
@@ -289,7 +315,7 @@ conf_coverage = df.loc[df.method=='conf']
 conf_coverage = conf_coverage.groupby(['rep', 'alpha']).aggregate('first')['coverage'].unstack()
 
 
-# In[20]:
+# In[21]:
 
 
 yticks = [0,0.25,0.5,0.75,1]
